@@ -1,0 +1,1249 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kelly Position Sizer — Intrinsic Value</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #faf9f6;
+        --surface: #ffffff;
+        --border: #e8e4dc;
+        --text: #1a1814;
+        --muted: #6b6560;
+        --accent: #c8622a;
+        --accent-light: #f5ede6;
+        --teal: #1a7a62;
+        --teal-light: #e4f3ee;
+        --blue: #2355a0;
+        --blue-light: #e8eef8;
+        --purple: #5a3f9e;
+        --purple-light: #eeeaf8;
+        --amber: #b07a10;
+        --amber-light: #fdf3dc;
+        --red: #b73838;
+        --red-light: #f8e4e4;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: "DM Sans", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 15px;
+        line-height: 1.7;
+      }
+      .page { max-width: 980px; margin: 0 auto; padding: 48px 32px 80px; }
+
+      /* HEADER */
+      .memo-header { border-bottom: 2px solid var(--text); padding-bottom: 24px; margin-bottom: 40px; }
+      .memo-tag { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+      .memo-title { font-family: "Lora", serif; font-size: clamp(26px, 5vw, 40px); font-weight: 600; line-height: 1.15; margin-bottom: 16px; }
+      .memo-meta { display: flex; gap: 28px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+      .memo-meta span { display: flex; align-items: center; gap: 5px; }
+
+      /* SECTION */
+      .section { margin-bottom: 52px; }
+      .section-label { font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+      .section-title { font-family: "Lora", serif; font-size: 22px; font-weight: 600; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+      .section-hidden { display: none; }
+
+      /* DISTRIBUTION TABS */
+      .dist-tabs { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 3px; width: fit-content; gap: 2px; }
+      .dist-tab { padding: 10px 32px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all 0.15s; font-family: "DM Sans", sans-serif; }
+      .dist-tab.active { background: var(--text); color: var(--bg); }
+      .dist-tab:hover:not(.active) { background: var(--border); color: var(--text); }
+
+      /* CONTROL PANEL */
+      .control-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px 26px; margin: 20px 0; }
+      .control-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px 24px; }
+      .control-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 24px; }
+      @media (max-width: 640px) { .control-grid, .control-grid-3 { grid-template-columns: 1fr; } }
+      .control-group { display: flex; flex-direction: column; }
+      .control-group label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+      .control-group .hint { font-size: 11px; color: var(--muted); margin-top: 4px; font-style: italic; }
+      .param-divider { margin: 20px 0 18px; border-top: 1px dashed var(--border); padding-top: 16px; }
+      .param-sublabel { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+
+      input[type="number"] {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 14px;
+        padding: 9px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg);
+        color: var(--text);
+        width: 100%;
+        transition: border 0.15s, background 0.15s;
+      }
+      input[type="number"]:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+
+      /* TOGGLE ROW */
+      .invest-row { background: var(--accent-light); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 18px; }
+      .invest-row-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 12px; }
+      .invest-row-head .label-line { font-size: 13px; font-weight: 600; }
+      .invest-row-head .label-line .muted { color: var(--muted); font-weight: 400; margin-left: 6px; font-size: 12px; }
+      .switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider-toggle { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #d4cec4; border-radius: 24px; transition: 0.2s; }
+      .slider-toggle:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: 0.2s; }
+      input:checked + .slider-toggle { background-color: var(--accent); }
+      input:checked + .slider-toggle:before { transform: translateX(18px); }
+      .switch-row { display: flex; align-items: center; gap: 10px; }
+      .switch-row .switch-label { font-size: 12px; color: var(--muted); transition: color 0.15s; }
+      .switch-row .switch-label.active { color: var(--text); font-weight: 600; }
+      .invest-controls { display: flex; align-items: center; gap: 14px; }
+      .invest-controls input[type="number"] { width: 90px; }
+      .invest-controls.disabled { opacity: 0.45; pointer-events: none; }
+
+      /* BUTTONS */
+      .button-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 20px; }
+      .btn { font-family: "DM Sans", sans-serif; font-size: 14px; font-weight: 600; padding: 11px 22px; border: none; border-radius: 8px; cursor: pointer; transition: transform 0.08s, background 0.15s; }
+      .btn-primary { background: var(--text); color: var(--bg); }
+      .btn-primary:hover { background: #2c2924; }
+      .btn-primary:active { transform: scale(0.98); }
+      .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+      .btn-secondary:hover { background: #f2efe8; }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .status-text { font-size: 13px; color: var(--muted); }
+
+      /* KELLY HERO */
+      .result-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; margin: 20px 0; }
+      .kelly-hero { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+      .kelly-big-card { flex: 1; min-width: 200px; text-align: center; padding: 28px 20px; border-radius: 10px; border: 1px solid; }
+      .kelly-big-card.kfull { background: var(--accent-light); border-color: var(--accent); }
+      .kelly-big-card.khalf { background: var(--teal-light); border-color: var(--teal); }
+      .k-label { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+      .k-value { font-family: "Lora", serif; font-size: 56px; font-weight: 600; line-height: 1; margin-bottom: 10px; }
+      .kfull .k-value { color: var(--accent); }
+      .khalf .k-value { color: var(--teal); }
+      .k-sub { font-size: 12px; color: var(--muted); }
+      .no-edge-banner { background: var(--red-light); border: 1px solid var(--red); border-radius: 10px; padding: 16px 20px; color: var(--red); font-weight: 600; font-size: 14px; margin-bottom: 20px; }
+
+      /* SUMMARY GRID */
+      .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0; }
+      @media (max-width: 720px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+      .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+      .summary-card .s-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+      .summary-card .s-value { font-family: "Lora", serif; font-size: 22px; font-weight: 600; }
+      .summary-card .s-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+      .summary-card.teal .s-value { color: var(--teal); }
+      .summary-card.red .s-value { color: var(--red); }
+      .summary-card.accent .s-value { color: var(--accent); }
+      .summary-card.blue .s-value { color: var(--blue); }
+
+      /* CHART */
+      .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; margin: 20px 0; }
+      .chart-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+      .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+      .chart-sub { font-size: 12px; color: var(--muted); }
+      .chart-controls { display: flex; gap: 6px; }
+      .chart-controls button { font-family: "DM Sans", sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; padding: 5px 11px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 6px; cursor: pointer; transition: 0.15s; }
+      .chart-controls button.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+      .chart-canvas-wrap { position: relative; width: 100%; height: 460px; }
+      canvas { display: block; width: 100%; height: 100%; }
+
+      /* DISTRIBUTION PREVIEW */
+      .dist-chart-wrap { margin: 20px 0 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+      .dist-chart-head { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 14px 0; }
+      .dist-chart-title { font-size: 12px; font-weight: 600; color: var(--text); }
+      .dist-chart-sub { font-size: 11px; color: var(--muted); font-style: italic; }
+      .dist-canvas-wrap { position: relative; width: 100%; height: 200px; padding: 4px 0 0; }
+
+      /* FOOTER */
+      .footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+
+      <!-- HEADER -->
+      <div class="memo-header">
+        <div class="memo-tag">Value Investing · Kelly Criterion</div>
+        <h1 class="memo-title">Kelly Position Sizer<br/>— Intrinsic Value Distribution</h1>
+        <div class="memo-meta">
+          <span>📊 Normal &amp; Triangular distributions</span>
+          <span>🎯 Numerically-optimised Kelly fraction</span>
+          <span>📈 1,000-path Monte Carlo</span>
+        </div>
+      </div>
+
+      <!-- SECTION 1: DISTRIBUTION -->
+      <div class="section">
+        <div class="section-label">Section 1</div>
+        <div class="section-title">Choose intrinsic value distribution</div>
+        <div class="dist-tabs">
+          <button class="dist-tab active" id="tabNormal">Normal</button>
+          <button class="dist-tab" id="tabTriangular">Triangular</button>
+        </div>
+      </div>
+
+      <!-- SECTION 2: PARAMETERS -->
+      <div class="section">
+        <div class="section-label">Section 2</div>
+        <div class="section-title">Distribution parameters</div>
+        <div class="control-panel">
+
+          <div style="max-width: 340px; margin-bottom: 20px;">
+            <div class="control-group">
+              <label>Current Market Price ($)</label>
+              <input type="number" id="marketPrice" value="100" min="0.01" step="1" />
+              <div class="hint">The price you pay per share / unit today.</div>
+            </div>
+          </div>
+
+          <div class="param-divider">
+            <div class="param-sublabel" id="distParamLabel">Normal distribution — intrinsic value parameters</div>
+          </div>
+
+          <!-- NORMAL PARAMS -->
+          <div id="normalParams">
+            <div class="control-grid">
+              <div class="control-group">
+                <label>Mean Intrinsic Value ($)</label>
+                <input type="number" id="normMean" value="130" step="1" />
+                <div class="hint">Your central estimate of intrinsic value. Floored at $0.</div>
+              </div>
+              <div class="control-group">
+                <label>Std Deviation ($)</label>
+                <input type="number" id="normSigma" value="25" min="0.01" step="1" />
+                <div class="hint">Spread / uncertainty around your estimate.</div>
+              </div>
+              <div class="control-group">
+                <label>Skewness</label>
+                <input type="number" id="normSkew" value="0" step="0.1" />
+                <div class="hint">0 = symmetric. Positive = right tail heavier.</div>
+              </div>
+              <div class="control-group">
+                <label>Excess Kurtosis</label>
+                <input type="number" id="normKurt" value="0" step="0.1" />
+                <div class="hint">0 = normal tails. Positive = fatter tails.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TRIANGULAR PARAMS -->
+          <div id="triParams" style="display:none;">
+            <div class="control-grid-3">
+              <div class="control-group">
+                <label>Minimum Value ($) — Bear</label>
+                <input type="number" id="triMin" value="70" min="0" step="1" />
+                <div class="hint">Worst-case intrinsic value (cannot be negative).</div>
+              </div>
+              <div class="control-group">
+                <label>Mode Value ($) — Base case</label>
+                <input type="number" id="triMode" value="130" step="1" />
+                <div class="hint">Most likely intrinsic value.</div>
+              </div>
+              <div class="control-group">
+                <label>Maximum Value ($) — Bull</label>
+                <input type="number" id="triMax" value="200" step="1" />
+                <div class="hint">Best-case intrinsic value.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Distribution preview chart -->
+          <div class="dist-chart-wrap">
+            <div class="dist-chart-head">
+              <span class="dist-chart-title">Distribution preview</span>
+              <span class="dist-chart-sub">Updates live as you edit parameters above</span>
+            </div>
+            <div class="dist-canvas-wrap">
+              <canvas id="distCanvas"></canvas>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button class="btn btn-primary" id="computeKellyBtn">Compute Kelly</button>
+            <button class="btn btn-secondary" id="resetBtn">Reset defaults</button>
+            <span class="status-text" id="computeStatus"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 3: KELLY RESULT -->
+      <div class="section section-hidden" id="kellySection">
+        <div class="section-label">Section 3</div>
+        <div class="section-title">Kelly-optimal position size</div>
+
+        <div id="noEdgeBanner" class="no-edge-banner section-hidden">
+          No edge detected — Kelly fraction is zero or negative. The model says: do not take this position at this price.
+        </div>
+
+        <div class="result-panel">
+          <div class="kelly-hero">
+            <div class="kelly-big-card kfull">
+              <div class="k-label">Full Kelly</div>
+              <div class="k-value" id="rKellyFull">—</div>
+              <div class="k-sub">of total portfolio in this position</div>
+            </div>
+            <div class="kelly-big-card khalf">
+              <div class="k-label">Half Kelly</div>
+              <div class="k-value" id="rKellyHalf">—</div>
+              <div class="k-sub">conservative — recommended in practice</div>
+            </div>
+          </div>
+
+          <div class="summary-grid" style="margin-top: 0;">
+            <div class="summary-card accent">
+              <div class="s-label">Expected return</div>
+              <div class="s-value" id="rExpReturn">—</div>
+              <div class="s-sub">E[(V − P) / P]</div>
+            </div>
+            <div class="summary-card">
+              <div class="s-label">Return std dev</div>
+              <div class="s-value" id="rStdReturn">—</div>
+              <div class="s-sub">σ of simulated returns</div>
+            </div>
+            <div class="summary-card teal">
+              <div class="s-label">P(profit)</div>
+              <div class="s-value" id="rPProfit">—</div>
+              <div class="s-sub">P(intrinsic value &gt; price)</div>
+            </div>
+            <div class="summary-card blue">
+              <div class="s-label">E[intrinsic value]</div>
+              <div class="s-value" id="rEV">—</div>
+              <div class="s-sub">mean of distribution</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 4: SIMULATION -->
+      <div class="section section-hidden" id="simSection">
+        <div class="section-label">Section 4</div>
+        <div class="section-title">Intrinsic value convergence — 1,000 scenarios</div>
+
+        <div class="control-panel">
+          <div class="control-grid">
+            <div class="control-group">
+              <label>Initial Portfolio ($)</label>
+              <input type="number" id="initWealth" value="100000" min="1" step="1000" />
+              <div class="hint">Starting capital before any investments.</div>
+            </div>
+            <div class="control-group">
+              <label>Time horizon (years)</label>
+              <input type="number" id="timeHorizon" value="10" min="1" max="50" step="1" />
+              <div class="hint">Years until the stock price converges to its intrinsic value.</div>
+            </div>
+          </div>
+
+          <div class="invest-row" style="margin-top: 18px;">
+            <div class="invest-row-head">
+              <div class="label-line">
+                Allocation fraction
+                <span class="muted">— what fraction of portfolio to commit per investment</span>
+              </div>
+              <div class="switch-row">
+                <span class="switch-label active" id="simFracOffLabel">Full Kelly</span>
+                <label class="switch">
+                  <input type="checkbox" id="simFracToggle" />
+                  <span class="slider-toggle"></span>
+                </label>
+                <span class="switch-label" id="simFracOnLabel">Custom %</span>
+              </div>
+            </div>
+            <div class="invest-controls disabled" id="simFracControls">
+              <input type="number" id="simFracCustom" min="0" max="500" value="25" step="1" />
+              <span style="font-size: 13px; color: var(--muted);">%</span>
+            </div>
+          </div>
+
+          <div class="button-row" style="margin-top: 4px;">
+            <button class="btn btn-primary" id="runSimBtn">Run simulation</button>
+            <span class="status-text" id="simStatus"></span>
+          </div>
+        </div>
+
+        <!-- Stats row A -->
+        <div class="summary-grid">
+          <div class="summary-card teal">
+            <div class="s-label">Median final portfolio</div>
+            <div class="s-value" id="sMedian">—</div>
+            <div class="s-sub">50th percentile</div>
+          </div>
+          <div class="summary-card accent">
+            <div class="s-label">Mean final portfolio</div>
+            <div class="s-value" id="sMean">—</div>
+            <div class="s-sub">arithmetic average</div>
+          </div>
+          <div class="summary-card blue">
+            <div class="s-label">90th percentile</div>
+            <div class="s-value" id="s90">—</div>
+            <div class="s-sub">top decile outcome</div>
+          </div>
+          <div class="summary-card red">
+            <div class="s-label">10th percentile</div>
+            <div class="s-value" id="s10">—</div>
+            <div class="s-sub">bottom decile outcome</div>
+          </div>
+        </div>
+
+        <!-- Stats row B -->
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="s-label">Best path</div>
+            <div class="s-value" id="sMax">—</div>
+            <div class="s-sub">maximum across all paths</div>
+          </div>
+          <div class="summary-card">
+            <div class="s-label">Worst path</div>
+            <div class="s-value" id="sMin">—</div>
+            <div class="s-sub">minimum across all paths</div>
+          </div>
+          <div class="summary-card">
+            <div class="s-label">% paths profitable</div>
+            <div class="s-value" id="sProfit">—</div>
+            <div class="s-sub">final &gt; initial portfolio</div>
+          </div>
+          <div class="summary-card">
+            <div class="s-label">Annualized return</div>
+            <div class="s-value" id="sGeo">—</div>
+            <div class="s-sub" id="sGeoSub">per year</div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-wrap">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">Price convergence to intrinsic value — 1,000 scenarios</div>
+              <div class="chart-sub">Each thin line shows one scenario: price drifts from market price to its realized intrinsic value. Orange = median outcome. Dashed = market price.</div>
+            </div>
+            <div class="chart-controls">
+              <button id="scaleLog">Log scale</button>
+              <button id="scaleLin" class="active">Linear scale</button>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="pathsCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        Kelly criterion intrinsic value position sizer &nbsp;·&nbsp; All computation runs locally in your browser.
+      </div>
+    </div>
+
+    <script>
+    (function () {
+      "use strict";
+
+      const $ = (id) => document.getElementById(id);
+
+      // ── State ──────────────────────────────────────────────────────────────
+      let distMode = "normal";
+      let kellyFraction = 0;
+      let lastResult = null;
+      let lastCfg = null;
+      let yScaleMode = "lin";
+
+      // ── Distribution toggle ────────────────────────────────────────────────
+      $("tabNormal").addEventListener("click", () => setDist("normal"));
+      $("tabTriangular").addEventListener("click", () => setDist("triangular"));
+
+      function setDist(mode) {
+        distMode = mode;
+        $("tabNormal").classList.toggle("active", mode === "normal");
+        $("tabTriangular").classList.toggle("active", mode === "triangular");
+        $("normalParams").style.display = mode === "normal" ? "" : "none";
+        $("triParams").style.display = mode === "triangular" ? "" : "none";
+        $("distParamLabel").textContent =
+          mode === "normal"
+            ? "Normal distribution — intrinsic value parameters (floored at $0)"
+            : "Triangular distribution — intrinsic value parameters";
+        scheduleDistDraw();
+      }
+
+      // ── Random samplers ────────────────────────────────────────────────────
+      function boxMuller() {
+        let u1;
+        do { u1 = Math.random(); } while (u1 === 0);
+        const u2 = Math.random();
+        return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+      }
+
+      // Cornish-Fisher expansion: maps N(0,1) variate to target skew/kurtosis
+      function sampleNormalCF(mean, sigma, skew, exKurt) {
+        const z = boxMuller();
+        const s = skew, k = exKurt;
+        const w =
+          z +
+          ((z * z - 1) * s) / 6 +
+          ((z * z * z - 3 * z) * k) / 24 -
+          ((2 * z * z * z - 5 * z) * s * s) / 36;
+        return mean + sigma * w;
+      }
+
+      // Triangular inverse-CDF (a=min, c=mode, b=max)
+      function sampleTriangular(a, c, b) {
+        const u = Math.random();
+        const fc = (c - a) / (b - a);
+        if (u < fc) return a + Math.sqrt(u * (b - a) * (c - a));
+        return b - Math.sqrt((1 - u) * (b - a) * (b - c));
+      }
+
+      // Triangular quantile (analytical inverse-CDF at probability p)
+      function triangularQuantile(a, c, b, p) {
+        const fc = (c - a) / (b - a);
+        if (p <= fc) return a + Math.sqrt(p * (b - a) * (c - a));
+        return b - Math.sqrt((1 - p) * (b - a) * (b - c));
+      }
+
+      function drawOneSample(price) {
+        if (distMode === "normal") {
+          const mean  = parseFloat($("normMean").value);
+          const sigma = parseFloat($("normSigma").value);
+          const skew  = parseFloat($("normSkew").value);
+          const kurt  = parseFloat($("normKurt").value);
+          return (Math.max(0, sampleNormalCF(mean, sigma, skew, kurt)) - price) / price;
+        } else {
+          const a = parseFloat($("triMin").value);
+          const c = parseFloat($("triMode").value);
+          const b = parseFloat($("triMax").value);
+          return (sampleTriangular(a, c, b) - price) / price;
+        }
+      }
+
+      function generateReturns(n, price) {
+        const arr = new Float64Array(n);
+        if (distMode === "normal") {
+          const mean  = parseFloat($("normMean").value);
+          const sigma = parseFloat($("normSigma").value);
+          const skew  = parseFloat($("normSkew").value);
+          const kurt  = parseFloat($("normKurt").value);
+          for (let i = 0; i < n; i++)
+            arr[i] = (Math.max(0, sampleNormalCF(mean, sigma, skew, kurt)) - price) / price;
+        } else {
+          const a = parseFloat($("triMin").value);
+          const c = parseFloat($("triMode").value);
+          const b = parseFloat($("triMax").value);
+          for (let i = 0; i < n; i++)
+            arr[i] = (sampleTriangular(a, c, b) - price) / price;
+        }
+        return arr;
+      }
+
+      // ── Numerical Kelly optimisation (ternary search) ──────────────────────
+      function kellyObj(f, returns) {
+        let sum = 0;
+        for (let i = 0; i < returns.length; i++) {
+          const v = 1 + f * returns[i];
+          if (v <= 1e-15) return -1e18;
+          sum += Math.log(v);
+        }
+        return sum;
+      }
+
+      function findKelly(returns) {
+        let sumR = 0;
+        for (let i = 0; i < returns.length; i++) sumR += returns[i];
+        if (sumR / returns.length <= 0) return 0; // no edge
+
+        let minR = Infinity;
+        for (let i = 0; i < returns.length; i++)
+          if (returns[i] < minR) minR = returns[i];
+
+        // max safe f such that 1 + f*minR > 0, capped at 5
+        const maxF = minR < 0 ? Math.min(5, -0.999 / minR) : 5;
+
+        let lo = 0, hi = maxF;
+        for (let iter = 0; iter < 200; iter++) {
+          const m1 = lo + (hi - lo) / 3;
+          const m2 = hi - (hi - lo) / 3;
+          if (kellyObj(m1, returns) < kellyObj(m2, returns)) lo = m1;
+          else hi = m2;
+        }
+        return Math.max(0, (lo + hi) / 2);
+      }
+
+      // ── Compute Kelly handler ──────────────────────────────────────────────
+      $("computeKellyBtn").addEventListener("click", computeKelly);
+
+      function validateInputs() {
+        const price = parseFloat($("marketPrice").value);
+        if (!isFinite(price) || price <= 0) return "Current market price must be a positive number.";
+        if (distMode === "normal") {
+          const mean  = parseFloat($("normMean").value);
+          const sigma = parseFloat($("normSigma").value);
+          if (!isFinite(mean))                return "Mean intrinsic value must be a number.";
+          if (!isFinite(sigma) || sigma <= 0) return "Std deviation must be positive.";
+        } else {
+          const a = parseFloat($("triMin").value);
+          const c = parseFloat($("triMode").value);
+          const b = parseFloat($("triMax").value);
+          if (!isFinite(a) || !isFinite(c) || !isFinite(b))
+            return "All triangular parameters must be numbers.";
+          if (a < 0) return "Minimum intrinsic value cannot be negative.";
+          if (a >= b) return "Min must be less than Max.";
+          if (c < a || c > b) return "Mode must be between Min and Max.";
+        }
+        return null;
+      }
+
+      function computeKelly() {
+        const err = validateInputs();
+        if (err) {
+          $("computeStatus").textContent = err;
+          $("computeStatus").style.color = "var(--red)";
+          return;
+        }
+        $("computeStatus").textContent = "Computing Kelly from 100,000 draws…";
+        $("computeStatus").style.color = "var(--muted)";
+
+        setTimeout(() => {
+          const price = parseFloat($("marketPrice").value);
+          const N = 100000;
+          const returns = generateReturns(N, price);
+
+          // Stats
+          let sumR = 0, profitCount = 0;
+          for (let i = 0; i < N; i++) {
+            sumR += returns[i];
+            if (returns[i] > 0) profitCount++;
+          }
+          const meanR = sumR / N;
+          let sumSq = 0;
+          for (let i = 0; i < N; i++) sumSq += (returns[i] - meanR) ** 2;
+          const stdR = Math.sqrt(sumSq / N);
+          const pProfit = profitCount / N;
+
+          let evSum = 0;
+          for (let i = 0; i < N; i++) evSum += (1 + returns[i]) * price;
+          const ev = evSum / N;
+
+          const kf = findKelly(returns);
+          kellyFraction = kf;
+
+          // Show results
+          const hasEdge = kf > 0.0005;
+          $("noEdgeBanner").classList.toggle("section-hidden", hasEdge);
+          $("rKellyFull").textContent  = (kf * 100).toFixed(1) + "%";
+          $("rKellyHalf").textContent  = (kf * 50).toFixed(1) + "%";
+          $("rExpReturn").textContent  = fmtPct(meanR);
+          $("rStdReturn").textContent  = fmtPct(stdR);
+          $("rPProfit").textContent    = (pProfit * 100).toFixed(1) + "%";
+          $("rEV").textContent         = fmtCurrency(ev);
+
+          $("kellySection").classList.remove("section-hidden");
+          $("simSection").classList.remove("section-hidden");
+          $("computeStatus").textContent =
+            "Done. Full Kelly: " + (kf * 100).toFixed(1) + "% · Half Kelly: " + (kf * 50).toFixed(1) + "%";
+          $("computeStatus").style.color = "var(--teal)";
+
+          // Auto-run convergence simulation whenever Kelly is computed
+          doRunSimulation();
+        }, 16);
+      }
+
+      // ── Simulation — single step: one IV draw per scenario ────────────────
+      function runSimulation(W0, horizon, Y, f, price) {
+        const ivSamples = new Float64Array(Y);
+        const finals    = new Float64Array(Y);
+        for (let i = 0; i < Y; i++) {
+          const r  = drawOneSample(price); // (iv − price) / price
+          const iv = price * (1 + r);
+          ivSamples[i] = iv;
+          let w = W0 * (1 + f * r);
+          if (w < 0) w = 0;
+          finals[i] = w;
+        }
+        return { ivSamples, finals };
+      }
+
+      async function doRunSimulation() {
+        const err = validateInputs();
+        if (err) { $("simStatus").textContent = err; $("simStatus").style.color = "var(--red)"; return; }
+
+        const W0      = parseFloat($("initWealth").value);
+        const horizon = parseInt($("timeHorizon").value, 10);
+        const Y       = 1000;
+        const price   = parseFloat($("marketPrice").value);
+
+        if (!isFinite(W0) || W0 <= 0) {
+          $("simStatus").textContent = "Initial portfolio must be positive.";
+          $("simStatus").style.color = "var(--red)"; return;
+        }
+        if (!isFinite(horizon) || horizon < 1 || horizon > 50) {
+          $("simStatus").textContent = "Time horizon must be between 1 and 50 years.";
+          $("simStatus").style.color = "var(--red)"; return;
+        }
+
+        const useCustom = $("simFracToggle").checked;
+        const f = useCustom ? parseFloat($("simFracCustom").value) / 100 : kellyFraction;
+
+        $("runSimBtn").disabled = true;
+        $("simStatus").textContent = "Simulating 1,000 scenarios…";
+        $("simStatus").style.color = "var(--muted)";
+        await new Promise(requestAnimationFrame);
+
+        const t0 = performance.now();
+        const result = runSimulation(W0, horizon, Y, f, price);
+        const t1 = performance.now();
+
+        lastResult = result;
+        lastCfg = { horizon, Y, W0, f, price };
+
+        updateStats(result, W0, horizon);
+        drawChart();
+
+        $("simStatus").textContent =
+          "Done in " + (t1 - t0).toFixed(0) + " ms · " + (f * 100).toFixed(1) + "% allocated";
+        $("simStatus").style.color = "var(--teal)";
+        $("runSimBtn").disabled = false;
+      }
+
+      $("runSimBtn").addEventListener("click", doRunSimulation);
+
+      // ── Stats helpers ──────────────────────────────────────────────────────
+      function percentile(sorted, p) {
+        if (!sorted.length) return NaN;
+        const idx = (sorted.length - 1) * p;
+        const lo = Math.floor(idx), hi = Math.ceil(idx);
+        if (lo === hi) return sorted[lo];
+        return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+      }
+
+      function fmtCurrency(x) {
+        if (!isFinite(x)) return "—";
+        const abs = Math.abs(x);
+        if (abs >= 1e9) return "$" + (x / 1e9).toFixed(2) + "B";
+        if (abs >= 1e6) return "$" + (x / 1e6).toFixed(2) + "M";
+        if (abs >= 1e3) return "$" + (x / 1e3).toFixed(1) + "K";
+        if (abs >= 1)   return "$" + x.toFixed(0);
+        if (abs > 0)    return "$" + x.toFixed(4);
+        return "$0";
+      }
+
+      function fmtPct(x) {
+        if (!isFinite(x)) return "—";
+        return (x * 100).toFixed(2) + "%";
+      }
+
+      function updateStats(result, W0, horizon) {
+        const { finals } = result;
+        const sorted = Array.from(finals).sort((a, b) => a - b);
+        let sum = 0;
+        for (let i = 0; i < finals.length; i++) sum += finals[i];
+        const mn = sum / finals.length;
+        let profitable = 0, logSum = 0, logCount = 0;
+        for (let i = 0; i < finals.length; i++) {
+          if (finals[i] > W0) profitable++;
+          if (finals[i] > 0) { logSum += Math.log(finals[i] / W0); logCount++; }
+        }
+        const geoMean = logCount > 0 ? Math.exp(logSum / logCount / horizon) - 1 : NaN;
+
+        $("sMedian").textContent = fmtCurrency(percentile(sorted, 0.5));
+        $("sMean").textContent   = fmtCurrency(mn);
+        $("s90").textContent     = fmtCurrency(percentile(sorted, 0.9));
+        $("s10").textContent     = fmtCurrency(percentile(sorted, 0.1));
+        $("sMax").textContent    = fmtCurrency(sorted[sorted.length - 1]);
+        $("sMin").textContent    = fmtCurrency(sorted[0]);
+        $("sProfit").textContent = fmtPct(profitable / finals.length);
+        $("sGeo").textContent    = fmtPct(geoMean);
+        $("sGeoSub").textContent = "annualized over " + horizon + " yr" + (horizon === 1 ? "" : "s");
+      }
+
+      // ── Chart (canvas) ─────────────────────────────────────────────────────
+      const canvas = $("pathsCanvas");
+      const ctx    = canvas.getContext("2d");
+
+      $("scaleLog").addEventListener("click", () => setScale("log"));
+      $("scaleLin").addEventListener("click", () => setScale("lin"));
+
+      function setScale(s) {
+        yScaleMode = s;
+        $("scaleLog").classList.toggle("active", s === "log");
+        $("scaleLin").classList.toggle("active", s === "lin");
+        if (lastResult) drawChart();
+      }
+
+      function resizeCanvas() {
+        const dpr  = window.devicePixelRatio || 1;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width  = Math.max(1, Math.floor(rect.width  * dpr));
+        canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function niceTicks(min, max, target = 6) {
+        if (min === max) { min -= 1; max += 1; }
+        const rough = (max - min) / target;
+        const mag   = Math.pow(10, Math.floor(Math.log10(rough)));
+        const norm  = rough / mag;
+        let step;
+        if (norm < 1.5) step = 1 * mag;
+        else if (norm < 3) step = 2 * mag;
+        else if (norm < 7) step = 5 * mag;
+        else step = 10 * mag;
+        const niceMin = Math.floor(min / step) * step;
+        const niceMax = Math.ceil(max  / step) * step;
+        const ticks = [];
+        for (let v = niceMin; v <= niceMax + step * 0.5; v += step) ticks.push(v);
+        return { ticks, niceMin, niceMax };
+      }
+
+      function logTicks(min, max) {
+        const lo = Math.floor(Math.log10(Math.max(min, 1e-12)));
+        const hi = Math.ceil( Math.log10(Math.max(max, 1e-12)));
+        const ticks = [];
+        for (let e = lo; e <= hi; e++) ticks.push(Math.pow(10, e));
+        return { ticks, niceMin: Math.pow(10, lo), niceMax: Math.pow(10, hi) };
+      }
+
+      function fmtAxis(v) {
+        if (v === 0) return "0";
+        const abs = Math.abs(v);
+        if (abs >= 1e9) return (v / 1e9).toFixed(abs >= 1e10 ? 0 : 1) + "B";
+        if (abs >= 1e6) return (v / 1e6).toFixed(abs >= 1e7  ? 0 : 1) + "M";
+        if (abs >= 1e3) return (v / 1e3).toFixed(abs >= 1e4  ? 0 : 1) + "K";
+        if (abs >= 1)   return v.toFixed(0);
+        if (abs >= 0.01) return v.toFixed(2);
+        return v.toExponential(0);
+      }
+
+      function drawChart() {
+        if (!lastResult || !lastCfg) return;
+        resizeCanvas();
+
+        const { ivSamples } = lastResult;
+        const { horizon, Y, price } = lastCfg;
+        const dpr   = window.devicePixelRatio || 1;
+        const W     = canvas.width  / dpr;
+        const H     = canvas.height / dpr;
+        const padL  = 72, padR = 20, padT = 14, padB = 38;
+        const plotW = W - padL - padR;
+        const plotH = H - padT - padB;
+
+        ctx.clearRect(0, 0, W, H);
+
+        // Y-axis range: all IV samples + market price
+        let rawMin = price, rawMax = price;
+        for (let i = 0; i < Y; i++) {
+          if (ivSamples[i] < rawMin) rawMin = ivSamples[i];
+          if (ivSamples[i] > rawMax) rawMax = ivSamples[i];
+        }
+
+        let yMin, yMax, yTicks;
+        if (yScaleMode === "log") {
+          const posFloor = Math.max(rawMin, 1e-9);
+          yMin = Math.pow(10, Math.floor(Math.log10(posFloor)));
+          yMax = Math.pow(10, Math.ceil( Math.log10(Math.max(rawMax, posFloor * 10))));
+          if (yMax <= yMin) yMax = yMin * 10;
+          const lt = logTicks(yMin, yMax);
+          yTicks = lt.ticks; yMin = lt.niceMin; yMax = lt.niceMax;
+        } else {
+          const range = rawMax - rawMin;
+          const pad   = range > 0 ? range * 0.08 : Math.max(1, rawMax * 0.08);
+          yMin = Math.max(0, rawMin - pad);
+          yMax = rawMax + pad;
+          const nt = niceTicks(yMin, yMax, 6);
+          yTicks = nt.ticks; yMin = nt.niceMin; yMax = nt.niceMax;
+        }
+
+        function yMap(v) {
+          if (yScaleMode === "log") {
+            const vv = v <= 0 ? yMin : v;
+            const lo = Math.log10(yMin), hi = Math.log10(yMax);
+            return padT + (1 - (Math.log10(vv) - lo) / (hi - lo)) * plotH;
+          }
+          return padT + (1 - (v - yMin) / (yMax - yMin)) * plotH;
+        }
+
+        const xLeft  = padL;
+        const xRight = padL + plotW;
+
+        // Y grid + labels
+        ctx.font = '11px "JetBrains Mono", monospace';
+        ctx.fillStyle = "#6b6560"; ctx.textBaseline = "middle"; ctx.textAlign = "right";
+        for (const tick of yTicks) {
+          const y = yMap(tick);
+          if (y < padT - 0.5 || y > padT + plotH + 0.5) continue;
+          ctx.strokeStyle = "#e8e4dc"; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+          ctx.fillText("$" + fmtAxis(tick), padL - 8, y);
+        }
+
+        // X axis: two tick marks only (Now / Year N)
+        ctx.strokeStyle = "#d4cec4"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(xLeft,  padT + plotH); ctx.lineTo(xLeft,  padT + plotH + 5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(xRight, padT + plotH); ctx.lineTo(xRight, padT + plotH + 5); ctx.stroke();
+        ctx.fillStyle = "#6b6560"; ctx.font = '11px "JetBrains Mono", monospace';
+        ctx.textAlign = "center"; ctx.textBaseline = "top";
+        ctx.fillText("Now",             xLeft,  padT + plotH + 6);
+        ctx.fillText("Yr " + horizon,   xRight, padT + plotH + 6);
+
+        // Axis frame
+        ctx.strokeStyle = "#1a1814"; ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + plotH);
+        ctx.lineTo(padL + plotW, padT + plotH);
+        ctx.stroke();
+
+        // Axis titles
+        ctx.fillStyle = "#1a1814"; ctx.font = '600 11px "DM Sans", sans-serif';
+        ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+        ctx.fillText("Time", padL + plotW / 2, H - 8);
+        ctx.save();
+        ctx.translate(14, padT + plotH / 2); ctx.rotate(-Math.PI / 2); ctx.textBaseline = "middle";
+        ctx.fillText("Price / Intrinsic Value ($)" + (yScaleMode === "log" ? " — log scale" : ""), 0, 0);
+        ctx.restore();
+
+        // Clip to plot area
+        ctx.save();
+        ctx.beginPath(); ctx.rect(padL, padT, plotW, plotH); ctx.clip();
+
+        // Sort IVs once — used for percentile lines and median
+        const sortedIV   = Array.from(ivSamples).sort((a, b) => a - b);
+        const ivPctilePs = [0.10, 0.25, 0.75, 0.90]; // P50 is shown by the orange median line
+        const ivPctileVals = ivPctilePs.map(p => percentile(sortedIV, p));
+
+        // Percentile reference lines — horizontal, light grey, behind the fan
+        ctx.strokeStyle = "#c0bcb6"; ctx.lineWidth = 0.7; ctx.setLineDash([3, 3]);
+        for (let pi = 0; pi < ivPctileVals.length; pi++) {
+          const y = yMap(ivPctileVals[pi]);
+          if (y < padT || y > padT + plotH) continue;
+          ctx.beginPath(); ctx.moveTo(xLeft, y); ctx.lineTo(xRight, y); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#aaa69f"; ctx.font = '8px "DM Sans", sans-serif';
+        ctx.textAlign = "right"; ctx.textBaseline = "middle";
+        for (let pi = 0; pi < ivPctileVals.length; pi++) {
+          const y = yMap(ivPctileVals[pi]);
+          if (y < padT || y > padT + plotH) continue;
+          ctx.fillText(["P10", "P25", "P75", "P90"][pi], xRight - 4, y);
+        }
+
+        // Bridge volatility: scales with spread of the IV distribution
+        let ivSum = 0;
+        for (let i = 0; i < Y; i++) ivSum += ivSamples[i];
+        const ivMean = ivSum / Y;
+        let ivVar = 0;
+        for (let i = 0; i < Y; i++) ivVar += (ivSamples[i] - ivMean) ** 2;
+        const bridgeVol = Math.sqrt(ivVar / Y) * 0.45;
+
+        // Draw Brownian-bridge paths: each starts at market price, drifts to
+        // its sampled IV with midpoint noise, so density at right = IV distribution
+        const K       = 40; // intermediate steps for smooth curves
+        const sqrtDt  = Math.sqrt(1 / K);
+        const alpha   = Math.min(0.32, Math.max(0.04, 18 / Y));
+        const alphaStr = alpha.toFixed(3);
+        const bmVals  = new Float32Array(K + 1); // reused across paths
+
+        ctx.lineWidth = 0.75;
+        const yStart = yMap(price);
+
+        for (let i = 0; i < Y; i++) {
+          const iv = ivSamples[i];
+
+          // Build a Brownian bridge (starts and ends at 0) in bmVals
+          bmVals[0] = 0;
+          for (let k = 0; k < K; k++) bmVals[k + 1] = bmVals[k] + boxMuller() * sqrtDt;
+          const bmEnd = bmVals[K];
+
+          ctx.strokeStyle = "rgba(35,85,160," + alphaStr + ")";
+          ctx.beginPath();
+          ctx.moveTo(xLeft, yStart);
+          for (let k = 1; k <= K; k++) {
+            const t      = k / K;
+            const bridge = bmVals[k] - t * bmEnd; // Brownian bridge: 0→0
+            const val    = price + t * (iv - price) + bridgeVol * bridge;
+            ctx.lineTo(xLeft + t * plotW, yMap(val));
+          }
+          ctx.stroke();
+        }
+
+        // Median outcome line
+        const medIV = percentile(sortedIV, 0.5);
+        ctx.strokeStyle = "#c8622a"; ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(xLeft, yStart);
+        ctx.lineTo(xRight, yMap(medIV));
+        ctx.stroke();
+
+        // Market price horizontal reference
+        ctx.strokeStyle = "rgba(26,24,20,0.45)"; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(xLeft, yStart); ctx.lineTo(xRight, yStart); ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.restore();
+
+        // Legend
+        const lgX = padL + plotW - 184, lgY = padT + 8;
+        ctx.fillStyle = "rgba(255,255,255,0.93)"; ctx.strokeStyle = "#e8e4dc"; ctx.lineWidth = 1;
+        ctx.fillRect(lgX, lgY, 176, 58); ctx.strokeRect(lgX, lgY, 176, 58);
+        ctx.fillStyle = "#1a1814"; ctx.font = '11px "DM Sans", sans-serif';
+        ctx.textAlign = "left"; ctx.textBaseline = "middle";
+
+        ctx.strokeStyle = "rgba(35,85,160,0.7)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(lgX + 10, lgY + 14); ctx.lineTo(lgX + 34, lgY + 14); ctx.stroke();
+        ctx.fillText("Simulated scenario", lgX + 40, lgY + 14);
+
+        ctx.strokeStyle = "#c8622a"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(lgX + 10, lgY + 30); ctx.lineTo(lgX + 34, lgY + 30); ctx.stroke();
+        ctx.fillText("Median outcome", lgX + 40, lgY + 30);
+
+        ctx.strokeStyle = "rgba(26,24,20,0.45)"; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(lgX + 10, lgY + 46); ctx.lineTo(lgX + 34, lgY + 46); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#1a1814";
+        ctx.fillText("Market price", lgX + 40, lgY + 46);
+      }
+
+      window.addEventListener("resize", () => {
+        if (lastResult) drawChart();
+        drawDistribution();
+      });
+
+      // ── Custom fraction toggle ─────────────────────────────────────────────
+      $("simFracToggle").addEventListener("change", function () {
+        const on = this.checked;
+        $("simFracControls").classList.toggle("disabled", !on);
+        $("simFracOffLabel").classList.toggle("active", !on);
+        $("simFracOnLabel").classList.toggle("active", on);
+      });
+
+      // ── Reset ──────────────────────────────────────────────────────────────
+      $("resetBtn").addEventListener("click", () => {
+        $("marketPrice").value = 100;
+        $("normMean").value    = 130;
+        $("normSigma").value   = 25;
+        $("normSkew").value    = 0;
+        $("normKurt").value    = 0;
+        $("triMin").value      = 70;
+        $("triMode").value     = 130;
+        $("triMax").value      = 200;
+        $("initWealth").value  = 100000;
+        $("timeHorizon").value = 10;
+        setDist("normal");
+        $("kellySection").classList.add("section-hidden");
+        $("simSection").classList.add("section-hidden");
+        lastResult = null;
+        kellyFraction = 0;
+        $("computeStatus").textContent = "Defaults restored.";
+        $("computeStatus").style.color = "var(--muted)";
+      });
+
+      // Enter key → compute Kelly from any input
+      ["marketPrice","normMean","normSigma","normSkew","normKurt","triMin","triMode","triMax"].forEach((id) => {
+        $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); computeKelly(); } });
+      });
+
+      // ── Distribution preview chart ──────────────────────────────────────────
+      const distCanvas = $("distCanvas");
+      const distCtx    = distCanvas.getContext("2d");
+      let distDrawTimer = null;
+
+      function resizeDistCanvas() {
+        const dpr  = window.devicePixelRatio || 1;
+        const rect = distCanvas.parentElement.getBoundingClientRect();
+        distCanvas.width  = Math.max(1, Math.floor(rect.width  * dpr));
+        distCanvas.height = Math.max(1, Math.floor(rect.height * dpr));
+        distCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function drawDistribution() {
+        const price = parseFloat($("marketPrice").value);
+        let pts = [];
+        let pProfit = NaN;
+        let pctileXVals = [];
+        const PCTILES = [0.10, 0.25, 0.50, 0.75, 0.90];
+        const PCTILE_LABELS = ["P10", "P25", "P50", "P75", "P90"];
+
+        if (distMode === "normal") {
+          const mean  = parseFloat($("normMean").value);
+          const sigma = parseFloat($("normSigma").value);
+          const skew  = parseFloat($("normSkew").value) || 0;
+          const kurt  = parseFloat($("normKurt").value) || 0;
+          if (!isFinite(mean) || !isFinite(sigma) || sigma <= 0) {
+            distCtx.clearRect(0, 0, distCanvas.width, distCanvas.height);
+            return;
+          }
+          const N_S = 6000;
+          const raw = new Float64Array(N_S);
+          let profitCount = 0;
+          for (let i = 0; i < N_S; i++) {
+            raw[i] = Math.max(0, sampleNormalCF(mean, sigma, skew, kurt)); // floor at 0
+            if (isFinite(price) && raw[i] > price) profitCount++;
+          }
+          if (isFinite(price)) pProfit = profitCount / N_S;
+
+          // Always start histogram from 0 so the floor is visible
+          let hi = raw[0];
+          for (let i = 1; i < N_S; i++) if (raw[i] > hi) hi = raw[i];
+          const margin = hi * 0.04;
+          const lo = 0, hiAdj = hi + margin;
+          const BINS = 70, bw = (hiAdj - lo) / BINS;
+          const counts = new Int32Array(BINS);
+          for (let i = 0; i < N_S; i++) {
+            const idx = Math.max(0, Math.min(BINS - 1, Math.floor((raw[i] - lo) / bw)));
+            counts[idx]++;
+          }
+          for (let i = 0; i < BINS; i++)
+            pts.push({ x: lo + (i + 0.5) * bw, y: counts[i] / (N_S * bw) });
+
+          const sorted_raw = Array.from(raw).sort((a, b) => a - b);
+          pctileXVals = PCTILES.map(p => {
+            const idx = (sorted_raw.length - 1) * p;
+            const l = Math.floor(idx), h = Math.ceil(idx);
+            return sorted_raw[l] + (sorted_raw[h] - sorted_raw[l]) * (idx - l);
+          });
+
+        } else {
+          const a = parseFloat($("triMin").value);
+          const c = parseFloat($("triMode").value);
+          const b = parseFloat($("triMax").value);
+          if (!isFinite(a) || !isFinite(b) || !isFinite(c) || a >= b || c < a || c > b) {
+            distCtx.clearRect(0, 0, distCanvas.width, distCanvas.height);
+            return;
+          }
+          if (isFinite(price)) {
+            if      (price <= a) pProfit = 1;
+            else if (price >= b) pProfit = 0;
+            else if (price <= c) pProfit = 1 - (price - a) * (price - a) / ((b - a) * (c - a));
+            else                 pProfit = (b - price) * (b - price) / ((b - a) * (b - c));
+          }
+          const N_PTS = 300;
+          const mg = (b - a) * 0.04;
+          const lo = a - mg, hi = b + mg;
+          for (let i = 0; i <= N_PTS; i++) {
+            const x = lo + i * (hi - lo) / N_PTS;
+            let y = 0;
+            if      (x >= a && x <= c && c > a) y = 2 * (x - a) / ((b - a) * (c - a));
+            else if (x  > c && x <= b && b > c) y = 2 * (b - x) / ((b - a) * (b - c));
+            pts.push({ x, y });
+          }
+          pctileXVals = PCTILES.map(p => triangularQuantile(a, c, b, p));
+        }
+
+        if (!pts.length) return;
+
+        // Expand x-range to always show market price
+        let xLo = pts[0].x, xHi = pts[pts.length - 1].x;
+        if (isFinite(price)) {
+          const xR = xHi - xLo;
+          if (price < xLo) xLo = price - xR * 0.06;
+          if (price > xHi) xHi = price + xR * 0.06;
+        }
+        const maxY = Math.max(...pts.map(p => p.y));
+        if (!isFinite(maxY) || maxY <= 0) return;
+
+        resizeDistCanvas();
+        const dpr = window.devicePixelRatio || 1;
+        const CW  = distCanvas.width / dpr, CH = distCanvas.height / dpr;
+        const pL = 10, pR = 10, pT = 26, pB = 30;
+        const pW = CW - pL - pR, pH = CH - pT - pB;
+
+        distCtx.clearRect(0, 0, CW, CH);
+
+        const xM = v => pL + (v - xLo) / (xHi - xLo) * pW;
+        const yM = v => pT + (1 - v / maxY) * pH;
+
+        // Profit / loss background tint
+        if (isFinite(price)) {
+          const px = Math.max(pL, Math.min(pL + pW, xM(price)));
+          distCtx.fillStyle = "rgba(183,56,56,0.08)";
+          distCtx.fillRect(pL, pT, px - pL, pH);
+          distCtx.fillStyle = "rgba(26,122,98,0.08)";
+          distCtx.fillRect(px, pT, pL + pW - px, pH);
+        }
+
+        // Filled area under curve
+        distCtx.beginPath();
+        distCtx.moveTo(xM(pts[0].x), pT + pH);
+        for (const p of pts) distCtx.lineTo(xM(p.x), yM(p.y));
+        distCtx.lineTo(xM(pts[pts.length - 1].x), pT + pH);
+        distCtx.closePath();
+        const grad = distCtx.createLinearGradient(0, pT, 0, pT + pH);
+        grad.addColorStop(0, "rgba(35,85,160,0.28)");
+        grad.addColorStop(1, "rgba(35,85,160,0.04)");
+        distCtx.fillStyle = grad;
+        distCtx.fill();
+
+        // Curve stroke
+        distCtx.beginPath();
+        distCtx.moveTo(xM(pts[0].x), yM(pts[0].y));
+        for (let i = 1; i < pts.length; i++) distCtx.lineTo(xM(pts[i].x), yM(pts[i].y));
+        distCtx.strokeStyle = "#2355a0";
+        distCtx.lineWidth = 1.8;
+        distCtx.stroke();
+
+        // Percentile markers — thin light-grey dashed verticals
+        if (pctileXVals.length) {
+          distCtx.strokeStyle = "#bfbbb6"; distCtx.lineWidth = 0.8; distCtx.setLineDash([3, 3]);
+          for (let pi = 0; pi < pctileXVals.length; pi++) {
+            const xv = xM(pctileXVals[pi]);
+            if (xv < pL || xv > pL + pW) continue;
+            distCtx.beginPath(); distCtx.moveTo(xv, pT); distCtx.lineTo(xv, pT + pH); distCtx.stroke();
+          }
+          distCtx.setLineDash([]);
+          distCtx.fillStyle = "#aaa69f"; distCtx.font = '8px "DM Sans", sans-serif';
+          distCtx.textAlign = "center"; distCtx.textBaseline = "top";
+          for (let pi = 0; pi < pctileXVals.length; pi++) {
+            const xv = xM(pctileXVals[pi]);
+            if (xv < pL || xv > pL + pW) continue;
+            distCtx.fillText(PCTILE_LABELS[pi], xv, pT + (pi % 2 === 0 ? 2 : 10));
+          }
+        }
+
+        // Market price dashed line
+        if (isFinite(price) && price >= xLo && price <= xHi) {
+          const px = xM(price);
+          distCtx.save();
+          distCtx.strokeStyle = "#c8622a"; distCtx.lineWidth = 1.5; distCtx.setLineDash([4, 3]);
+          distCtx.beginPath(); distCtx.moveTo(px, pT - 8); distCtx.lineTo(px, pT + pH); distCtx.stroke();
+          distCtx.setLineDash([]); distCtx.restore();
+          distCtx.fillStyle = "#c8622a"; distCtx.font = '600 10px "DM Sans", sans-serif';
+          distCtx.textAlign    = px > CW / 2 ? "right" : "left";
+          distCtx.textBaseline = "bottom";
+          distCtx.fillText("$" + price.toFixed(0) + " paid", px + (px > CW / 2 ? -5 : 5), pT - 2);
+        }
+
+        // X axis line
+        distCtx.strokeStyle = "#d4cec4"; distCtx.lineWidth = 1;
+        distCtx.beginPath(); distCtx.moveTo(pL, pT + pH); distCtx.lineTo(pL + pW, pT + pH); distCtx.stroke();
+
+        // X tick marks and labels
+        const rough = (xHi - xLo) / 5;
+        const mag2  = Math.pow(10, Math.floor(Math.log10(Math.max(rough, 1e-9))));
+        const norm2 = rough / mag2;
+        const xStep = norm2 < 1.5 ? mag2 : norm2 < 3 ? 2 * mag2 : norm2 < 7 ? 5 * mag2 : 10 * mag2;
+        distCtx.fillStyle = "#6b6560"; distCtx.font = '10px "JetBrains Mono", monospace';
+        distCtx.textAlign = "center"; distCtx.textBaseline = "top";
+        for (let v = Math.ceil(xLo / xStep) * xStep; v <= xHi + xStep * 0.01; v += xStep) {
+          const x = xM(v);
+          if (x < pL - 1 || x > pL + pW + 1) continue;
+          distCtx.strokeStyle = "#d4cec4"; distCtx.lineWidth = 1;
+          distCtx.beginPath(); distCtx.moveTo(x, pT + pH); distCtx.lineTo(x, pT + pH + 4); distCtx.stroke();
+          distCtx.fillText("$" + fmtAxis(v), x, pT + pH + 6);
+        }
+
+        // P(profit) annotation top-right
+        if (isFinite(pProfit)) {
+          distCtx.fillStyle = "#1a7a62"; distCtx.font = '600 10px "DM Sans", sans-serif';
+          distCtx.textAlign = "right"; distCtx.textBaseline = "top";
+          distCtx.fillText("P(profit) = " + (pProfit * 100).toFixed(1) + "%", pL + pW - 4, pT + 4);
+        }
+      }
+
+      function scheduleDistDraw() {
+        clearTimeout(distDrawTimer);
+        distDrawTimer = setTimeout(drawDistribution, 150);
+      }
+
+      ["marketPrice","normMean","normSigma","normSkew","normKurt","triMin","triMode","triMax"].forEach((id) => {
+        $(id).addEventListener("input",  scheduleDistDraw);
+        $(id).addEventListener("change", scheduleDistDraw);
+      });
+
+      requestAnimationFrame(drawDistribution);
+
+    })();
+    </script>
+  </body>
+</html>
